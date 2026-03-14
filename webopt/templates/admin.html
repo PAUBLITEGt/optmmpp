@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — OTP Pro</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #060a12;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 0;
+        }
+
+        .topbar {
+            background: rgba(10,14,24,0.95);
+            border-bottom: 1px solid rgba(0,229,255,0.12);
+            padding: 0 32px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+        }
+        .topbar-brand {
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+            letter-spacing: 3px;
+            font-size: 1rem;
+            background: linear-gradient(90deg, #00e5ff, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .topbar-nav { display: flex; gap: 16px; align-items: center; }
+        .topbar-nav a {
+            text-decoration: none;
+            font-size: 0.82rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+            padding: 7px 16px;
+            border-radius: 8px;
+            transition: all 0.25s;
+        }
+        .nav-panel {
+            color: #00e5ff;
+            border: 1px solid rgba(0,229,255,0.2);
+        }
+        .nav-panel:hover { background: rgba(0,229,255,0.1); }
+        .nav-logout {
+            color: #ff4d4d;
+            border: 1px solid rgba(255,77,77,0.2);
+        }
+        .nav-logout:hover { background: rgba(255,77,77,0.1); }
+
+        .main {
+            max-width: 860px;
+            margin: 36px auto;
+            padding: 0 20px 60px;
+        }
+
+        .page-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.3rem;
+            font-weight: 900;
+            letter-spacing: 3px;
+            color: #fff;
+            margin-bottom: 28px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .page-title span { color: #00e5ff; }
+
+        .card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 18px;
+            padding: 24px;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+        }
+        .card:hover { border-color: rgba(0,229,255,0.12); }
+
+        .card-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-title::before {
+            content: '';
+            display: block;
+            width: 3px;
+            height: 14px;
+            border-radius: 2px;
+            background: linear-gradient(#00e5ff, #7c00ff);
+        }
+        .card-title.yellow::before { background: linear-gradient(#f9d423, #ff8c00); }
+        .card-title.red::before { background: linear-gradient(#ff4d4d, #ff0000); }
+        .card-title.green::before { background: linear-gradient(#00ff88, #00cc66); }
+
+        input[type=text], input[type=email], input[type=password], input[type=number] {
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            margin-bottom: 10px;
+            transition: all 0.25s;
+        }
+        input:focus {
+            border-color: rgba(0,229,255,0.4);
+            background: rgba(0,229,255,0.04);
+            box-shadow: 0 0 16px rgba(0,229,255,0.08);
+        }
+        input::placeholder { color: rgba(255,255,255,0.25); }
+
+        .btn {
+            padding: 11px 22px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            letter-spacing: 1.5px;
+            cursor: pointer;
+            transition: all 0.25s;
+            font-family: 'Inter', sans-serif;
+        }
+        .btn:hover { transform: translateY(-1px); }
+        .btn-cyan { background: linear-gradient(135deg, #00c8e0, #00e5ff); color: #000; box-shadow: 0 4px 20px rgba(0,229,255,0.25); }
+        .btn-cyan:hover { box-shadow: 0 8px 30px rgba(0,229,255,0.45); }
+        .btn-yellow { background: linear-gradient(135deg, #e6b800, #f9d423); color: #000; box-shadow: 0 4px 20px rgba(249,212,35,0.25); }
+        .btn-yellow:hover { box-shadow: 0 8px 30px rgba(249,212,35,0.45); }
+        .btn-red { background: linear-gradient(135deg, #cc0000, #ff4d4d); color: #fff; box-shadow: 0 4px 16px rgba(255,77,77,0.2); }
+        .btn-red:hover { box-shadow: 0 8px 24px rgba(255,77,77,0.4); }
+        .btn-ghost { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.1); }
+        .btn-ghost:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .btn-full { width: 100%; text-align: center; padding: 13px; }
+
+        .divider { border: 0; border-top: 1px solid rgba(255,255,255,0.06); margin: 18px 0; }
+
+        .item-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 8px;
+            transition: background 0.2s;
+        }
+        .item-row:hover { background: rgba(255,255,255,0.04); }
+        .item-info strong { font-size: 0.9rem; color: #fff; display: block; margin-bottom: 2px; }
+        .item-info .sub { font-size: 0.75rem; color: rgba(255,255,255,0.35); font-family: monospace; }
+        .item-info .expire { font-size: 0.75rem; color: #ff6b6b; margin-top: 2px; }
+        .item-actions { display: flex; gap: 8px; }
+
+        .bg-preview {
+            width: 100%;
+            height: 180px;
+            border-radius: 12px;
+            object-fit: cover;
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 14px;
+        }
+        .bg-preview.bg-contain {
+            object-fit: cover;
+        }
+        .bg-placeholder {
+            width: 100%;
+            height: 140px;
+            border-radius: 12px;
+            background: repeating-linear-gradient(
+                45deg,
+                rgba(255,255,255,0.02),
+                rgba(255,255,255,0.02) 10px,
+                transparent 10px,
+                transparent 20px
+            );
+            border: 2px dashed rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255,255,255,0.25);
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            margin-bottom: 14px;
+        }
+        .file-input-wrap {
+            position: relative;
+            margin-bottom: 10px;
+        }
+        .file-input-wrap input[type=file] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            top: 0; left: 0;
+        }
+        .file-label {
+            display: block;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.05);
+            border: 1px dashed rgba(0,229,255,0.3);
+            border-radius: 10px;
+            text-align: center;
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.5);
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+        .file-label:hover {
+            border-color: rgba(0,229,255,0.6);
+            color: #00e5ff;
+            background: rgba(0,229,255,0.05);
+        }
+        .file-label span { color: #00e5ff; }
+
+        .inline-form { display: inline; }
+
+        .empty-note {
+            text-align: center;
+            color: rgba(255,255,255,0.2);
+            font-size: 0.82rem;
+            padding: 20px 0;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="topbar-brand">⚡ OTP PRO — ADMIN</div>
+    <div class="topbar-nav">
+        <a href="/" class="nav-panel">← Panel OTP</a>
+        <a href="/logout" class="nav-logout">Cerrar Sesión</a>
+    </div>
+</div>
+
+<div class="main">
+    <div class="page-title">Administración <span>//</span> Panel de Control</div>
+
+    <div class="card">
+        <div class="card-title yellow">Gestionar Usuarios</div>
+        <form action="/admin/add_user" method="POST">
+            <input type="text" name="username" placeholder="Nombre de usuario" required>
+            <input type="text" name="password" placeholder="Contraseña" required>
+            <input type="number" name="days" placeholder="Días de acceso (ej: 30)" required min="1">
+            <button type="submit" class="btn btn-yellow btn-full">CREAR / ACTUALIZAR USUARIO</button>
+        </form>
+        <hr class="divider">
+        {% if users %}
+            {% for u in users %}
+            <div class="item-row">
+                <div class="item-info">
+                    <strong>{{ u.username }}</strong>
+                    <div class="sub">Pass: {{ u.password }}</div>
+                    <div class="expire">Expira: {{ u.expires_at }}</div>
+                </div>
+                <div class="item-actions">
+                    <form action="/admin/delete_user" method="POST" class="inline-form">
+                        <input type="hidden" name="username" value="{{ u.username }}">
+                        <button type="submit" class="btn btn-red">ELIMINAR</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-note">Sin usuarios registrados</div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="card-title">Agregar Cuenta Gmail</div>
+        <form action="/admin/add" method="POST">
+            <input type="email" name="email" placeholder="Correo Gmail" required>
+            <input type="text" name="app_password" placeholder="Contraseña de aplicación" required>
+            <button type="submit" class="btn btn-cyan btn-full">AGREGAR CUENTA</button>
+        </form>
+        <hr class="divider">
+        {% if accounts %}
+            {% for account in accounts %}
+            <div class="item-row">
+                <div class="item-info">
+                    <strong>{{ account.email }}</strong>
+                    <div class="sub">{{ account.app_password }}</div>
+                </div>
+                <div class="item-actions">
+                    <form action="/admin/delete" method="POST" class="inline-form">
+                        <input type="hidden" name="email" value="{{ account.email }}">
+                        <button type="submit" class="btn btn-red">ELIMINAR</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-note">Sin cuentas registradas</div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="card-title green">Fondo de Login (Pantalla de Ingreso)</div>
+        {% if bg_login %}
+            {% if bg_login.lower().endswith(('.mp4', '.webm', '.mov')) %}
+                <video src="{{ bg_login }}" class="bg-preview" muted loop autoplay></video>
+            {% else %}
+                <img src="{{ bg_login }}" class="bg-preview bg-contain" alt="Fondo Login">
+            {% endif %}
+            <div style="display:flex; gap:10px; margin-bottom:14px;">
+                <span style="font-size:0.8rem; color:rgba(255,255,255,0.4); align-self:center;">Fondo de login activo</span>
+                <form action="/admin/delete_bg" method="POST" class="inline-form" style="margin-left:auto;">
+                    <input type="hidden" name="bg_type" value="login">
+                    <button type="submit" class="btn btn-red">BORRAR</button>
+                </form>
+            </div>
+        {% else %}
+            <div class="bg-placeholder">Sin fondo de login</div>
+        {% endif %}
+        <form action="/admin/upload_bg" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="bg_type" value="login">
+            <div class="file-input-wrap">
+                <label class="file-label" id="file-label-login">
+                    📁 Seleccionar archivo — <span>Clic aquí</span>
+                </label>
+                <input type="file" name="background" accept="image/*,video/*" onchange="updateLabel(this, 'file-label-login')">
+            </div>
+            <button type="submit" class="btn btn-cyan btn-full">SUBIR FONDO LOGIN</button>
+        </form>
+        <p style="font-size:0.72rem; color:rgba(255,255,255,0.2); margin-top:10px; letter-spacing:1px; text-align:center;">
+            Formatos: PNG, JPG, GIF, MP4, WEBM — Máximo 100MB
+        </p>
+    </div>
+
+    <div class="card">
+        <div class="card-title green">Fondo del Panel (Pantalla Principal)</div>
+        {% if bg_panel %}
+            {% if bg_panel.lower().endswith(('.mp4', '.webm', '.mov')) %}
+                <video src="{{ bg_panel }}" class="bg-preview" muted loop autoplay></video>
+            {% else %}
+                <img src="{{ bg_panel }}" class="bg-preview bg-contain" alt="Fondo Panel">
+            {% endif %}
+            <div style="display:flex; gap:10px; margin-bottom:14px;">
+                <span style="font-size:0.8rem; color:rgba(255,255,255,0.4); align-self:center;">Fondo del panel activo</span>
+                <form action="/admin/delete_bg" method="POST" class="inline-form" style="margin-left:auto;">
+                    <input type="hidden" name="bg_type" value="panel">
+                    <button type="submit" class="btn btn-red">BORRAR</button>
+                </form>
+            </div>
+        {% else %}
+            <div class="bg-placeholder">Sin fondo de panel</div>
+        {% endif %}
+        <form action="/admin/upload_bg" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="bg_type" value="panel">
+            <div class="file-input-wrap">
+                <label class="file-label" id="file-label-panel">
+                    📁 Seleccionar archivo — <span>Clic aquí</span>
+                </label>
+                <input type="file" name="background" accept="image/*,video/*" onchange="updateLabel(this, 'file-label-panel')">
+            </div>
+            <button type="submit" class="btn btn-cyan btn-full">SUBIR FONDO PANEL</button>
+        </form>
+        <p style="font-size:0.72rem; color:rgba(255,255,255,0.2); margin-top:10px; letter-spacing:1px; text-align:center;">
+            Formatos: PNG, JPG, GIF, MP4, WEBM — Máximo 100MB
+        </p>
+    </div>
+
+</div>
+
+<script>
+    function updateLabel(input, labelId) {
+        const label = document.getElementById(labelId);
+        if (input.files && input.files[0]) {
+            label.innerHTML = `✓ ${input.files[0].name} — <span>Cambiar</span>`;
+        }
+    }
+</script>
+</body>
+</html>

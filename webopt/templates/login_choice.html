@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTP Pro — Acceso</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bg-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #060a12;
+        }
+
+        {% if background_url %}
+        .bg-blur {
+            position: absolute;
+            inset: -20px;
+            background: url('{{ background_url }}') center/cover no-repeat;
+            filter: blur(40px) brightness(0.85);
+            transform: scale(1.1);
+        }
+        .bg-main {
+            position: absolute;
+            inset: 0;
+            background: url('{{ background_url }}') center/contain no-repeat;
+        }
+        {% endif %}
+
+        .bg-layer video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: cover;
+        }
+
+        {% if not background_url %}
+        .bg-layer::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at 20% 50%, rgba(0,229,255,0.08) 0%, transparent 60%),
+                        radial-gradient(ellipse at 80% 20%, rgba(120,0,255,0.1) 0%, transparent 60%),
+                        radial-gradient(ellipse at 60% 80%, rgba(255,200,0,0.06) 0%, transparent 50%);
+            animation: bgPulse 8s ease-in-out infinite alternate;
+        }
+        @keyframes bgPulse {
+            from { opacity: 0.6; }
+            to { opacity: 1; }
+        }
+        {% endif %}
+        .bg-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .particles {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+        }
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            animation: float linear infinite;
+            opacity: 0;
+        }
+        @keyframes float {
+            0%   { transform: translateY(110vh) scale(0); opacity: 0; }
+            5%   { opacity: 0.9; }
+            50%  { opacity: 0.7; }
+            95%  { opacity: 0.3; }
+            100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+        }
+
+        .card-wrapper {
+            position: relative;
+            z-index: 10;
+            animation: slideUp 0.7s cubic-bezier(0.22,1,0.36,1) both;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px) scale(0.95); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .login-card {
+            width: 420px;
+            background: rgba(10,14,24,0.82);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 24px;
+            border: 1px solid rgba(0,229,255,0.15);
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.04),
+                        0 30px 80px rgba(0,0,0,0.6),
+                        0 0 60px rgba(0,229,255,0.05);
+            overflow: hidden;
+            padding: 0 0 36px;
+        }
+
+        .card-header {
+            text-align: center;
+            padding: 36px 30px 20px;
+        }
+
+        .logo {
+            width: 58px;
+            height: 58px;
+            margin: 0 auto 14px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #00e5ff, #7c00ff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            box-shadow: 0 0 30px rgba(0,229,255,0.4);
+            animation: logoPulse 3s ease-in-out infinite;
+        }
+        @keyframes logoPulse {
+            0%, 100% { box-shadow: 0 0 30px rgba(0,229,255,0.4); }
+            50%       { box-shadow: 0 0 50px rgba(0,229,255,0.7), 0 0 80px rgba(0,229,255,0.2); }
+        }
+
+        .brand {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.5rem;
+            font-weight: 900;
+            letter-spacing: 4px;
+            background: linear-gradient(90deg, #00e5ff, #a855f7, #f9d423);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .brand-sub {
+            color: rgba(255,255,255,0.35);
+            font-size: 0.72rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .tabs {
+            display: flex;
+            margin: 10px 30px 0;
+            background: rgba(255,255,255,0.04);
+            border-radius: 12px;
+            padding: 4px;
+            gap: 4px;
+        }
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.4);
+            border-radius: 9px;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+        .tab.active {
+            background: linear-gradient(135deg, rgba(0,229,255,0.2), rgba(120,0,255,0.2));
+            color: #00e5ff;
+            box-shadow: 0 0 20px rgba(0,229,255,0.15);
+        }
+        .tab:hover:not(.active) {
+            color: rgba(255,255,255,0.7);
+            background: rgba(255,255,255,0.06);
+        }
+
+        .form-wrap {
+            padding: 28px 30px 0;
+        }
+        .form-container {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+        .form-container.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-align: center;
+            margin-bottom: 22px;
+        }
+        #user-form .form-title { color: #00e5ff; }
+        #admin-form .form-title { color: #f9d423; }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 14px;
+        }
+        .input-group input {
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        .input-group input::placeholder { color: rgba(255,255,255,0.3); }
+        .input-group input:focus {
+            border-color: rgba(0,229,255,0.5);
+            background: rgba(0,229,255,0.05);
+            box-shadow: 0 0 20px rgba(0,229,255,0.1), inset 0 0 10px rgba(0,229,255,0.03);
+        }
+        #admin-form .input-group input:focus {
+            border-color: rgba(249,212,35,0.5);
+            background: rgba(249,212,35,0.04);
+            box-shadow: 0 0 20px rgba(249,212,35,0.1), inset 0 0 10px rgba(249,212,35,0.03);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 900;
+            font-size: 0.9rem;
+            letter-spacing: 3px;
+            cursor: pointer;
+            margin-top: 6px;
+            transition: all 0.3s ease;
+            font-family: 'Orbitron', monospace;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(rgba(255,255,255,0.15), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .btn:hover::after { opacity: 1; }
+        .btn:hover { transform: translateY(-2px); }
+        .btn:active { transform: translateY(0); }
+
+        .btn-user {
+            background: linear-gradient(135deg, #00c8e0, #00e5ff);
+            color: #000;
+            box-shadow: 0 6px 30px rgba(0,229,255,0.35);
+        }
+        .btn-user:hover { box-shadow: 0 10px 40px rgba(0,229,255,0.55); }
+
+        .btn-admin {
+            background: linear-gradient(135deg, #e6b800, #f9d423);
+            color: #000;
+            box-shadow: 0 6px 30px rgba(249,212,35,0.35);
+        }
+        .btn-admin:hover { box-shadow: 0 10px 40px rgba(249,212,35,0.55); }
+
+        .error-msg {
+            background: rgba(255,61,0,0.12);
+            border: 1px solid rgba(255,61,0,0.3);
+            color: #ff6b4a;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .footer-note {
+            text-align: center;
+            color: rgba(255,255,255,0.15);
+            font-size: 0.68rem;
+            letter-spacing: 2px;
+            margin-top: 24px;
+            text-transform: uppercase;
+        }
+
+        .scan-line {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00e5ff, transparent);
+            animation: scan 3s linear infinite;
+            border-radius: 24px 24px 0 0;
+        }
+        @keyframes scan {
+            from { transform: translateX(-100%); }
+            to   { transform: translateX(100%); }
+        }
+
+        @media (max-width: 480px) {
+            body { align-items: flex-start; padding: 20px 0 40px; }
+            .login-card { width: calc(100vw - 32px); border-radius: 20px; padding: 0 0 28px; }
+            .card-header { padding: 28px 20px 16px; }
+            .brand { font-size: 1.2rem; letter-spacing: 2px; }
+            .tabs { margin: 10px 20px 0; }
+            .form-wrap { padding: 22px 20px 0; }
+            .input-group input { padding: 13px 15px; font-size: 0.9rem; }
+            .btn { padding: 14px; font-size: 0.82rem; letter-spacing: 2px; }
+            .logo { width: 50px; height: 50px; font-size: 22px; }
+        }
+        @media (max-width: 360px) {
+            .login-card { width: calc(100vw - 20px); }
+            .brand { font-size: 1rem; letter-spacing: 1px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-layer">
+        {% if background_url and background_url.lower().endswith(('.mp4', '.webm', '.mov')) %}
+        <video autoplay muted loop playsinline>
+            <source src="{{ background_url }}" type="video/{{ background_url.split('.')[-1] }}">
+        </video>
+        {% elif background_url %}
+        <div class="bg-blur"></div>
+        <div class="bg-main"></div>
+        {% endif %}
+        <div class="bg-overlay"></div>
+    </div>
+
+    <div class="particles" id="particles"></div>
+
+    <div class="card-wrapper">
+        <div class="login-card">
+            <div class="scan-line"></div>
+
+            <div class="card-header">
+                <div class="logo">🔐</div>
+                <div class="brand">PAUDRONIX GT</div>
+                <div class="brand-sub">Sistema de OTP</div>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active" id="tab-user" onclick="showForm('user', this)">USUARIO</div>
+                <div class="tab" id="tab-admin" onclick="showForm('admin', this)">ADMIN</div>
+            </div>
+
+            <div class="form-wrap">
+                {% if error %}
+                <div class="error-msg">⚠ {{ error }}</div>
+                {% endif %}
+
+                <div id="user-form" class="form-container active">
+                    <div class="form-title" style="margin-top:20px">INGRESO USUARIO</div>
+                    <form action="/user_login" method="POST">
+                        <div class="input-group">
+                            <input type="text" name="username" placeholder="Usuario" required autocomplete="username">
+                        </div>
+                        <div class="input-group">
+                            <input type="password" name="password" placeholder="Contraseña" required autocomplete="current-password">
+                        </div>
+                        <button type="submit" class="btn btn-user">ENTRAR</button>
+                    </form>
+                </div>
+
+                <div id="admin-form" class="form-container">
+                    <div class="form-title" style="margin-top:20px">INGRESO ADMIN</div>
+                    <form action="/login" method="POST">
+                        <div class="input-group">
+                            <input type="text" name="username" placeholder="Usuario" required autocomplete="username">
+                        </div>
+                        <div class="input-group">
+                            <input type="password" name="password" placeholder="Contraseña" required autocomplete="current-password">
+                        </div>
+                        <button type="submit" class="btn btn-admin">ACCEDER</button>
+                    </form>
+                </div>
+
+                <div class="footer-note">OTP Monitor &nbsp;•&nbsp; Acceso Seguro</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showForm(type, el) {
+            document.querySelectorAll('.form-container').forEach(f => f.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(type + '-form').classList.add('active');
+            el.classList.add('active');
+        }
+
+        function createParticles() {
+            const container = document.getElementById('particles');
+            const colors = ['#00e5ff', '#7c00ff', '#f9d423', '#ff3d8a', '#00ff88'];
+            for (let i = 0; i < 120; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                const size = Math.random() * 6 + 2;
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                p.style.cssText = `
+                    left: ${Math.random() * 100}%;
+                    width: ${size}px; height: ${size}px;
+                    background: ${color};
+                    box-shadow: 0 0 ${size * 8}px ${color};
+                    animation-duration: ${Math.random() * 10 + 6}s;
+                    animation-delay: ${Math.random() * 6}s;
+                `;
+                container.appendChild(p);
+            }
+        }
+        createParticles();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('tab') === 'admin') showForm('admin', document.getElementById('tab-admin'));
+        {% if tab == 'admin' %}
+        showForm('admin', document.getElementById('tab-admin'));
+        {% endif %}
+    </script>
+</body>
+</html>

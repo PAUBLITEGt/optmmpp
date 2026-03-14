@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTP Pro — Panel</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+            background: #060a12;
+        }
+
+        .bg-layer {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: #060a12;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .bg-blur {
+            position: absolute;
+            inset: -20px;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: blur(40px) brightness(0.85);
+            transform: scale(1.1);
+        }
+        .bg-main {
+            position: absolute;
+            inset: 0;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        .bg-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.15);
+        }
+        .bg-layer::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at 10% 20%, rgba(0,229,255,0.07) 0%, transparent 55%),
+                        radial-gradient(ellipse at 90% 80%, rgba(120,0,255,0.07) 0%, transparent 55%),
+                        radial-gradient(ellipse at 50% 50%, rgba(249,212,35,0.03) 0%, transparent 50%);
+            animation: bgPulse 10s ease-in-out infinite alternate;
+        }
+        @keyframes bgPulse { from { opacity: 0.5; } to { opacity: 1; } }
+
+        .particles {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+        }
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            animation: floatUp linear infinite;
+            opacity: 0;
+        }
+        @keyframes floatUp {
+            0%   { transform: translateY(110vh); opacity: 0; }
+            8%   { opacity: 0.8; }
+            92%  { opacity: 0.4; }
+            100% { transform: translateY(-10vh); opacity: 0; }
+        }
+
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(6,10,18,0.92);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(0,229,255,0.1);
+            padding: 0 16px;
+        }
+        .topbar-inner {
+            max-width: 960px;
+            margin: 0 auto;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .topbar-brand {
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+        .brand-title {
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+            font-size: clamp(0.85rem, 3.5vw, 1.4rem);
+            letter-spacing: clamp(1px, 1vw, 5px);
+            background: linear-gradient(90deg, #00e5ff, #a855f7, #f9d423);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            white-space: nowrap;
+        }
+
+        .topbar-actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .btn-action {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            border: none;
+            text-decoration: none;
+            transition: all 0.25s;
+            font-family: 'Inter', sans-serif;
+            white-space: nowrap;
+            min-height: 38px;
+        }
+        .btn-action:hover { transform: translateY(-1px); }
+        .btn-admin  { background: rgba(249,212,35,0.12); color: #f9d423; border: 1px solid rgba(249,212,35,0.25); }
+        .btn-admin:hover  { background: rgba(249,212,35,0.2); }
+        .btn-hist   { background: rgba(0,229,255,0.1); color: #00e5ff; border: 1px solid rgba(0,229,255,0.2); }
+        .btn-hist:hover   { background: rgba(0,229,255,0.18); }
+        .btn-reload { background: rgba(255,77,77,0.1); color: #ff6b6b; border: 1px solid rgba(255,77,77,0.2); }
+        .btn-reload:hover { background: rgba(255,77,77,0.18); }
+        .btn-exit   { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.4); border: 1px solid rgba(255,255,255,0.08); }
+        .btn-exit:hover   { background: rgba(255,255,255,0.1); color: #fff; }
+
+        .status-bar {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            padding: 8px 20px;
+            background: rgba(0,229,255,0.04);
+            border-bottom: 1px solid rgba(0,229,255,0.06);
+        }
+        .status-dot {
+            display: inline-block;
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: #00ff88;
+            margin-right: 8px;
+            animation: blink 1.5s ease-in-out infinite;
+            vertical-align: middle;
+        }
+        @keyframes blink { 0%,100%{opacity:1; box-shadow:0 0 6px #00ff88;} 50%{opacity:0.3; box-shadow:none;} }
+        .status-text { font-size: 0.72rem; color: rgba(255,255,255,0.35); letter-spacing: 2px; text-transform: uppercase; }
+
+        .main {
+            position: relative;
+            z-index: 2;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 28px 18px 60px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            animation: breathe 3s ease-in-out infinite;
+        }
+        @keyframes breathe { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
+        .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+        .empty-text { font-size: 0.85rem; color: rgba(255,255,255,0.25); letter-spacing: 2px; text-transform: uppercase; }
+
+        .otp-card {
+            background: rgba(10,14,24,0.75);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 20px;
+            padding: 22px;
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+            animation: cardIn 0.5s cubic-bezier(0.22,1,0.36,1) both;
+            transition: border-color 0.3s, transform 0.3s;
+        }
+        .otp-card:hover { border-color: rgba(0,229,255,0.2); transform: translateY(-2px); }
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(24px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .otp-card.new-flash { animation: cardIn 0.5s cubic-bezier(0.22,1,0.36,1) both, newFlash 1s ease; }
+        @keyframes newFlash {
+            0%   { box-shadow: 0 0 0 2px rgba(0,229,255,0.6), 0 0 40px rgba(0,229,255,0.3); }
+            100% { box-shadow: none; }
+        }
+
+        .card-accent {
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 4px;
+            border-radius: 20px 0 0 20px;
+            background: linear-gradient(180deg, #00e5ff, #7c00ff);
+        }
+        .card-accent.yellow { background: linear-gradient(180deg, #f9d423, #ff8c00); }
+
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 14px;
+            padding-left: 14px;
+        }
+        .card-meta {}
+        .card-sender {
+            font-family: Arial, Helvetica, sans-serif;
+            font-weight: 700;
+            font-size: clamp(1.1rem, 4vw, 1.6rem);
+            background: linear-gradient(90deg, #00e5ff, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            word-break: break-word;
+            margin-bottom: 3px;
+            letter-spacing: 1px;
+        }
+        .card-account {
+            font-size: 0.75rem;
+            color: #00e5ff;
+            opacity: 0.7;
+            word-break: break-all;
+        }
+        .card-time {
+            font-size: 0.72rem;
+            color: rgba(255,255,255,0.3);
+            white-space: nowrap;
+            font-family: Arial, Helvetica, sans-serif;
+            padding: 4px 8px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .card-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding-left: 14px;
+        }
+        .otp-code {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: clamp(2rem, 8vw, 3.5rem);
+            font-weight: 900;
+            color: #f9d423;
+            letter-spacing: 8px;
+            text-shadow: 0 0 24px rgba(249,212,35,0.7), 0 0 60px rgba(249,212,35,0.3);
+            animation: codePulse 2s ease-in-out infinite;
+            line-height: 1;
+        }
+        @keyframes codePulse {
+            0%,100% { text-shadow: 0 0 24px rgba(249,212,35,0.7), 0 0 60px rgba(249,212,35,0.3); }
+            50%      { text-shadow: 0 0 50px rgba(249,212,35,1), 0 0 100px rgba(249,212,35,0.5), 0 0 4px #fff; }
+        }
+
+        .btn-copy {
+            flex-shrink: 0;
+            padding: 13px 28px;
+            background: linear-gradient(135deg, #00c8e0, #00e5ff);
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            font-weight: 900;
+            font-size: 0.82rem;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(0,229,255,0.3);
+            font-family: 'Orbitron', monospace;
+            white-space: nowrap;
+        }
+        .btn-copy:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,229,255,0.5); }
+        .btn-copy:active { transform: translateY(0); }
+        .btn-copy.copied { background: linear-gradient(135deg, #00b85c, #00ff88); box-shadow: 0 4px 20px rgba(0,255,136,0.4); }
+
+        @media (max-width: 600px) {
+            .topbar-inner { height: 56px; }
+            .topbar-actions { gap: 5px; }
+            .btn-action span { display: none; }
+            .btn-action { padding: 9px 11px; font-size: 1rem; min-height: 40px; min-width: 40px; border-radius: 10px; }
+            .main { padding: 16px 12px 60px; }
+            .otp-card { padding: 16px; border-radius: 16px; margin-bottom: 12px; }
+            .card-top { flex-direction: column; gap: 6px; align-items: flex-start; margin-bottom: 12px; }
+            .card-time { align-self: flex-start; }
+            .card-bottom { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .btn-copy { width: 100%; justify-content: center; padding: 14px; font-size: 0.9rem; }
+            .otp-code { font-size: clamp(2.2rem, 12vw, 3rem); letter-spacing: 6px; }
+            .card-sender { font-size: clamp(1rem, 5vw, 1.4rem); }
+            .status-text { font-size: 0.65rem; letter-spacing: 1px; }
+        }
+        @media (max-width: 380px) {
+            .brand-title { font-size: 0.8rem; letter-spacing: 1px; }
+            .btn-action { padding: 8px 9px; min-width: 36px; }
+            .otp-code { font-size: 2rem; letter-spacing: 4px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="bg-layer">
+    <div class="bg-blur" id="bg-blur"></div>
+    <div class="bg-main" id="bg-main"></div>
+    <div class="bg-overlay"></div>
+</div>
+<div class="particles" id="particles"></div>
+
+<div class="topbar">
+    <div class="topbar-inner">
+        <div class="topbar-brand">
+            <div class="brand-title">🚀 PAUDRONIX GT</div>
+        </div>
+        <div class="topbar-actions">
+            {% if session.get('logged_in') %}
+            <a href="/admin" class="btn-action btn-admin">⚙ <span>ADMIN</span></a>
+            {% endif %}
+            <button id="btn-hist" class="btn-action btn-hist">⟳ <span>HISTORIAL</span></button>
+            <button onclick="location.reload()" class="btn-action btn-reload">⚡ <span>RECARGAR</span></button>
+            <a href="/logout" class="btn-action btn-exit">✕ <span>SALIR</span></a>
+        </div>
+    </div>
+</div>
+
+<div class="status-bar">
+    <span class="status-dot"></span>
+    <span class="status-text" id="status-text">Conectando...</span>
+</div>
+
+<div class="main">
+    <div class="empty-state" id="empty-state">
+        <div class="empty-icon">🛰️</div>
+        <div class="empty-text">Escaneando cuentas Gmail<br>Los códigos aparecen aquí al instante</div>
+    </div>
+    <div id="otp-list"></div>
+</div>
+
+<script>
+    function createParticles() {
+        const c = document.getElementById('particles');
+        const colors = ['#00e5ff','#7c00ff','#f9d423','#ff3d8a','#00ff88'];
+        for (let i = 0; i < 60; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            const sz = Math.random() * 5 + 2;
+            const col = colors[Math.floor(Math.random() * colors.length)];
+            p.style.cssText = `left:${Math.random()*100}%;width:${sz}px;height:${sz}px;background:${col};box-shadow:0 0 ${sz*6}px ${col};animation-duration:${Math.random()*12+8}s;animation-delay:${Math.random()*8}s`;
+            c.appendChild(p);
+        }
+    }
+    createParticles();
+
+    const socket = io({ transports: ['websocket', 'polling'], reconnection: true });
+
+    socket.on('connect', () => {
+        document.getElementById('status-text').textContent = 'En vivo — escaneando correos';
+        socket.emit('get_history');
+    });
+    
+    // Función para manejar el fondo (Imagen o Video)
+    function updateBackground(url) {
+        if (!url) return;
+        const bgBlur = document.getElementById('bg-blur');
+        const bgMain = document.getElementById('bg-main');
+        
+        const isVideo = url.match(/\.(mp4|webm|mov)$/i);
+        if (isVideo) {
+            const bgLayer = document.querySelector('.bg-layer');
+            bgLayer.innerHTML = `<video autoplay muted loop playsinline style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:-1;"><source src="${url}" type="video/${url.split('.').pop()}"></video><div class="bg-overlay"></div>`;
+        } else {
+            bgBlur.style.backgroundImage = `url('${url}')`;
+            bgMain.style.backgroundImage = `url('${url}')`;
+        }
+    }
+
+    // Obtener fondo del panel si existe
+    fetch('/admin/get_bg_url').then(r => r.json()).then(data => {
+        if (data.panel) updateBackground(data.panel);
+    });
+    socket.on('disconnect', () => {
+        document.getElementById('status-text').textContent = 'Reconectando...';
+    });
+
+    document.getElementById('btn-hist').onclick = () => socket.emit('get_history');
+
+    socket.on('history_data', (data) => {
+        const list = document.getElementById('otp-list');
+        const empty = document.getElementById('empty-state');
+        list.innerHTML = '';
+        if (data.length > 0 && empty) empty.style.display = 'none';
+        else if (data.length === 0 && empty) empty.style.display = '';
+        data.slice(0, 3).reverse().forEach(item => renderCard(item, false));
+    });
+
+    socket.on('new_otp', (data) => {
+        const list = document.getElementById('otp-list');
+        const empty = document.getElementById('empty-state');
+        if (empty) empty.style.display = 'none';
+
+        const exists = Array.from(list.querySelectorAll('.otp-code')).some(el => el.textContent === data.code);
+        if (exists) return;
+
+        const cards = list.querySelectorAll('.otp-card');
+        if (cards.length >= 3) cards[cards.length - 1].remove();
+
+        renderCard(data, true);
+    });
+
+    function renderCard(data, isNew) {
+        const list = document.getElementById('otp-list');
+        const isNetflix = (data.sender || '').toLowerCase().includes('netflix') || (data.subject || '').toLowerCase().includes('netflix');
+
+        const card = document.createElement('div');
+        card.className = 'otp-card' + (isNew ? ' new-flash' : '');
+        card.innerHTML = `
+            <div class="card-accent${isNetflix ? ' yellow' : ''}"></div>
+            <div class="card-top">
+                <div class="card-meta">
+                    <div class="card-sender">${escHtml(senderName(data.sender))}</div>
+                </div>
+                <div class="card-time">🕒 ${escHtml(data.time)}</div>
+            </div>
+            <div class="card-bottom">
+                <div class="otp-code">${escHtml(data.code)}</div>
+                <button class="btn-copy" onclick="copyCode('${escHtml(data.code)}', this)">COPIAR</button>
+            </div>
+        `;
+        list.insertBefore(card, list.firstChild);
+    }
+
+    function copyCode(code, btn) {
+        const orig = btn.textContent;
+        const confirm = () => {
+            btn.textContent = '✓ COPIADO';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(code).then(confirm).catch(() => fallbackCopy(code, confirm));
+        } else {
+            fallbackCopy(code, confirm);
+        }
+    }
+    function fallbackCopy(code, confirm) {
+        const ta = document.createElement('textarea');
+        ta.value = code;
+        ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try { document.execCommand('copy'); confirm(); } catch(e) {}
+        document.body.removeChild(ta);
+    }
+
+    function senderName(sender) {
+        if (!sender) return '';
+        const m = sender.match(/^"?(.+?)"?\s*</);
+        if (m) return m[1].trim();
+        if (sender.includes('@')) return sender.split('@')[0];
+        return sender;
+    }
+
+    function escHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+</script>
+</body>
+</html>
